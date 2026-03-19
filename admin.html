@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顺手送 - 管理后台</title>
+  <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/element-plus@2.4.0/dist/index.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; }
+    #app { min-height: 100vh; }
+    .admin-layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: #304156; color: white; position: fixed; height: 100vh; }
+    .logo { padding: 20px; font-size: 18px; font-weight: 600; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .menu { margin-top: 20px; }
+    .menu-item { padding: 15px 20px; cursor: pointer; transition: all 0.3s; }
+    .menu-item:hover { background: rgba(255,255,255,0.1); }
+    .menu-item.active { background: #409EFF; }
+    .main-content { flex: 1; margin-left: 220px; }
+    .header { background: white; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .content { padding: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .stat-value { font-size: 32px; font-weight: 600; margin-bottom: 8px; }
+    .stat-label { color: #909399; font-size: 14px; }
+    .stat-card.primary .stat-value { color: #409EFF; }
+    .stat-card.success .stat-value { color: #67C23A; }
+    .stat-card.warning .stat-value { color: #E6A23C; }
+    .stat-card.danger .stat-value { color: #F56C6C; }
+    .data-table { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .status-tag { padding: 4px 12px; border-radius: 12px; font-size: 12px; }
+    .status-pending { background: #fef0f0; color: #f56c6c; }
+    .status-accepted { background: #ecf5ff; color: #409eff; }
+    .status-completed { background: #f0f9eb; color: #67c23a; }
+    .status-cancelled { background: #f4f4f5; color: #909399; }
+    .action-btn { margin-right: 8px; }
+    .refresh-btn { margin-left: 10px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="admin-layout">
+      <!-- 侧边栏 -->
+      <div class="sidebar">
+        <div class="logo">📦 顺手送管理后台</div>
+        <div class="menu">
+          <div class="menu-item" :class="{active: currentView==='dashboard'}" @click="currentView='dashboard'">📊 数据概览</div>
+          <div class="menu-item" :class="{active: currentView==='orders'}" @click="currentView='orders'">📝 订单管理</div>
+          <div class="menu-item" :class="{active: currentView==='users'}" @click="currentView='users'">👥 用户管理</div>
+        </div>
+      </div>
+      
+      <!-- 主内容区 -->
+      <div class="main-content">
+        <div class="header">
+          <h2>{{viewTitle}}</h2>
+          <div>
+            <span>管理员</span>
+            <el-button type="primary" size="small" @click="refreshData" class="refresh-btn">🔄 刷新</el-button>
+          </div>
+        </div>
+        
+        <div class="content">
+          <!-- 数据概览 -->
+          <div v-if="currentView==='dashboard'">
+            <div class="stats-grid">
+              <div class="stat-card primary">
+                <div class="stat-value">{{stats.totalUsers}}</div>
+                <div class="stat-label">总用户数</div>
+              </div>
+              <div class="stat-card success">
+                <div class="stat-value">{{stats.verifiedUsers}}</div>
+                <div class="stat-label">已认证用户</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-value">{{stats.todayOrders}}</div>
+                <div class="stat-label">今日订单</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">¥{{stats.todayReward.toFixed(0)}}</div>
+                <div class="stat-label">今日流水</div>
+              </div>
+              <div class="stat-card primary">
+                <div class="stat-value">{{stats.totalOrders}}</div>
+                <div class="stat-label">总订单数</div>
+              </div>
+              <div class="stat-card success">
+                <div class="stat-value">{{stats.completedOrders}}</div>
+                <div class="stat-label">已完成订单</div>
+              </div>
+              <div class="stat-card warning">
+                <div class="stat-value">{{stats.pendingOrders}}</div>
+                <div class="stat-label">待接单</div>
+              </div>
+              <div class="stat-card danger">
+                <div class="stat-value">{{stats.cancelledOrders}}</div>
+                <div class="stat-label">已取消</div>
+              </div>
+            </div>
+            
+            <div class="data-table">
+              <h3>💰 累计流水：¥{{stats.totalReward.toFixed(2)}}</h3>
+            </div>
+          </div>
+          
+          <!-- 订单管理 -->
+          <div v-if="currentView==='orders'">
+            <div class="data-table">
+              <div class="table-header">
+                <h3>订单列表 ({{orders.length}})</h3>
+                <el-input v-model="orderSearch" placeholder="搜索订单..." style="width: 200px" clearable></el-input>
+              </div>
+              <el-table :data="filteredOrders" stripe style="width: 100%">
+                <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                <el-table-column prop="orderNo" label="订单号" width="180"></el-table-column>
+                <el-table-column label="类型" width="80">
+                  <template #default="scope">{{scope.row.type==='deliver'?'📦 送':'📥 取'}}</template>
+                </el-table-column>
+                <el-table-column label="状态" width="100">
+                  <template #default="scope">
+                    <span :class="['status-tag', 'status-'+scope.row.status]">{{statusMap[scope.row.status]||scope.row.status}}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="pickupAddress" label="取件地址"></el-table-column>
+                <el-table-column prop="deliveryAddress" label="收件地址"></el-table-column>
+                <el-table-column prop="reward" label="报酬" width="80">¥</el-table-column>
+                <el-table-column prop="createdAt" label="创建时间" width="180">
+                  <template #default="scope">{{formatDate(scope.row.createdAt)}}</template>
+                </el-table-column>
+                <el-table-column label="操作" width="150">
+                  <template #default="scope">
+                    <el-button v-if="scope.row.status!=='cancelled'" type="danger" size="small" @click="cancelOrder(scope.row.id)">取消</el-button>
+                    <el-button type="primary" size="small" @click="viewOrder(scope.row)">详情</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+          
+          <!-- 用户管理 -->
+          <div v-if="currentView==='users'">
+            <div class="data-table">
+              <div class="table-header">
+                <h3>用户列表 ({{users.length}})</h3>
+                <el-input v-model="userSearch" placeholder="搜索用户..." style="width: 200px" clearable></el-input>
+              </div>
+              <el-table :data="filteredUsers" stripe style="width: 100%">
+                <el-table-column prop="id" label="ID" width="80"></el-table-column>
+                <el-table-column prop="nickname" label="昵称" width="150"></el-table-column>
+                <el-table-column prop="phone" label="手机号" width="150"></el-table-column>
+                <el-table-column prop="creditScore" label="信用分" width="80"></el-table-column>
+                <el-table-column label="认证" width="80">
+                  <template #default="scope">
+                    <el-tag :type="scope.row.isVerified?'success':'info'">{{scope.row.isVerified?'已认证':'未认证'}}</el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column prop="deposit" label="保证金" width="80">¥</el-table-column>
+                <el-table-column prop="balance" label="余额" width="80">¥</el-table-column>
+                <el-table-column prop="completedOrders" label="完成订单" width="80"></el-table-column>
+                <el-table-column prop="totalEarnings" label="总收入" width="80">¥</el-table-column>
+                <el-table-column label="操作" width="150">
+                  <template #default="scope">
+                    <el-button v-if="!scope.row.isVerified" type="success" size="small" @click="verifyUser(scope.row.id)">认证</el-button>
+                    <el-button type="primary" size="small" @click="viewUser(scope.row)">详情</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://fastly.jsdelivr.net/npm/vue@3.4.0/dist/vue.global.prod.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/element-plus@2.4.0/dist/index.full.min.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/element-plus@2.4.0/dist/locale/zh-cn.min.js"></script>
+  <script>
+    const { createApp, ref, computed, onMounted } = Vue;
+    
+    const app = createApp({
+      setup() {
+        const API_BASE = 'https://a35d63f0b69338e3-8-152-234-182.serveousercontent.com/api';
+        const currentView = ref('dashboard');
+        const stats = ref({ totalUsers:0, verifiedUsers:0, totalOrders:0, pendingOrders:0, completedOrders:0, cancelledOrders:0, totalReward:0, todayOrders:0, todayReward:0 });
+        const orders = ref([]);
+        const users = ref([]);
+        const orderSearch = ref('');
+        const userSearch = ref('');
+        const statusMap = { pending:'待接单', accepted:'已接单', picked:'取件中', delivering:'配送中', completed:'已完成', cancelled:'已取消' };
+        
+        const viewTitle = computed(() => {
+          const titles = { dashboard:'📊 数据概览', orders:'📝 订单管理', users:'👥 用户管理' };
+          return titles[currentView.value];
+        });
+        
+        const filteredOrders = computed(() => {
+          if (!orderSearch.value) return orders.value;
+          return orders.value.filter(o => o.orderNo.toLowerCase().includes(orderSearch.value.toLowerCase()) || o.pickupAddress.includes(orderSearch.value));
+        });
+        
+        const filteredUsers = computed(() => {
+          if (!userSearch.value) return users.value;
+          return users.value.filter(u => u.nickname.includes(userSearch.value) || (u.phone&&u.phone.includes(userSearch.value)));
+        });
+        
+        const formatDate = (dateStr) => {
+          if (!dateStr) return '-';
+          const d = new Date(dateStr);
+          return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+        };
+        
+        const loadStats = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/admin/stats`);
+            stats.value = await res.json();
+          } catch (e) { console.error('加载统计失败', e); }
+        };
+        
+        const loadOrders = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/admin/orders`);
+            orders.value = await res.json();
+          } catch (e) { console.error('加载订单失败', e); }
+        };
+        
+        const loadUsers = async () => {
+          try {
+            const res = await fetch(`${API_BASE}/admin/users`);
+            users.value = await res.json();
+          } catch (e) { console.error('加载用户失败', e); }
+        };
+        
+        const refreshData = async () => {
+          ElementPlus.ElMessage.info('刷新中...');
+          await Promise.all([loadStats(), loadOrders(), loadUsers()]);
+          ElementPlus.ElMessage.success('数据已更新');
+        };
+        
+        const cancelOrder = async (id) => {
+          try {
+            await ElementPlus.ElMessageBox.confirm('确定要取消这个订单吗？', '确认操作');
+            await fetch(`${API_BASE}/admin/orders/${id}/cancel`, { method: 'POST' });
+            ElementPlus.ElMessage.success('订单已取消');
+            loadOrders();
+            loadStats();
+          } catch (e) { if (e !== 'cancel') ElementPlus.ElMessage.error('操作失败'); }
+        };
+        
+        const verifyUser = async (id) => {
+          try {
+            await fetch(`${API_BASE}/admin/users/${id}/verify`, { method: 'POST' });
+            ElementPlus.ElMessage.success('用户已认证');
+            loadUsers();
+            loadStats();
+          } catch (e) { ElementPlus.ElMessage.error('操作失败'); }
+        };
+        
+        const viewOrder = (order) => {
+          ElementPlus.ElMessageBox.alert(`
+            <strong>订单号:</strong> ${order.orderNo}<br>
+            <strong>状态:</strong> ${statusMap[order.status]}<br>
+            <strong>类型:</strong> ${order.type==='deliver'?'帮我送':'帮我取'}<br>
+            <strong>取件:</strong> ${order.pickupAddress}<br>
+            <strong>收件:</strong> ${order.deliveryAddress}<br>
+            <strong>描述:</strong> ${order.description||'-'}<br>
+            <strong>报酬:</strong> ¥${order.reward}
+          `, '订单详情', { dangerouslyUseHTMLString: true });
+        };
+        
+        const viewUser = (user) => {
+          ElementPlus.ElMessageBox.alert(`
+            <strong>昵称:</strong> ${user.nickname}<br>
+            <strong>手机:</strong> ${user.phone||'-'}<br>
+            <strong>信用分:</strong> ${user.creditScore}<br>
+            <strong>认证:</strong> ${user.isVerified?'已认证':'未认证'}<br>
+            <strong>保证金:</strong> ¥${user.deposit}<br>
+            <strong>余额:</strong> ¥${user.balance}<br>
+            <strong>完成订单:</strong> ${user.completedOrders}<br>
+            <strong>总收入:</strong> ¥${user.totalEarnings}
+          `, '用户详情', { dangerouslyUseHTMLString: true });
+        };
+        
+        onMounted(() => {
+          refreshData();
+          // 每 30 秒自动刷新
+          setInterval(refreshData, 30000);
+        });
+        
+        return { currentView, viewTitle, stats, orders, users, orderSearch, userSearch, statusMap, filteredOrders, filteredUsers, formatDate, refreshData, cancelOrder, verifyUser, viewOrder, viewUser };
+      }
+    });
+    
+    app.use(ElementPlus, { locale: ElementPlusLocaleZhCn });
+    app.mount('#app');
+  </script>
+</body>
+</html>

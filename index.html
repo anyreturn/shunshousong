@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>顺手送 - 顺路帮忙，温暖传递</title>
+  <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@4.8.0/lib/index.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+    #app { min-height: 100vh; }
+    .page { padding-bottom: 60px; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .location { display: flex; align-items: center; gap: 6px; font-size: 16px; }
+    .quick-actions { display: flex; justify-content: space-around; padding: 24px 16px; background: white; }
+    .action-card { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+    .action-card .icon { font-size: 40px; }
+    .action-card .text { font-size: 16px; font-weight: 600; color: #333; }
+    .action-card .sub { font-size: 12px; color: #999; }
+    .orders-section { padding: 16px; }
+    .section-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 16px; font-weight: 600; }
+    .more { color: #667eea; font-size: 14px; cursor: pointer; }
+    .order-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
+    .order-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    .type { font-weight: 600; color: #333; }
+    .time { color: #999; font-size: 12px; }
+    .order-route { color: #666; margin-bottom: 12px; font-size: 14px; }
+    .order-footer { display: flex; justify-content: space-between; align-items: center; }
+    .reward { color: #ff6b6b; font-weight: 600; font-size: 16px; }
+    .distance { color: #999; font-size: 12px; }
+    .page-header { display: flex; align-items: center; gap: 12px; padding: 16px; font-size: 18px; font-weight: 600; background: white; border-bottom: 1px solid #eee; }
+    .form { padding: 16px; }
+    .form-section { margin-bottom: 24px; background: white; padding: 16px; border-radius: 12px; }
+    .section-title { font-size: 14px; font-weight: 600; color: #666; margin-bottom: 12px; }
+    .type-selector { display: flex; gap: 12px; }
+    .type-option { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 20px; border: 2px solid #eee; border-radius: 12px; cursor: pointer; }
+    .type-option.active { border-color: #667eea; background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%); }
+    .type-option .icon { font-size: 32px; margin-bottom: 8px; }
+    .submit-section { margin-top: 24px; }
+    .profile-header { display: flex; align-items: center; gap: 16px; padding: 32px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.3); }
+    .user-info { flex: 1; }
+    .nickname { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .phone { font-size: 14px; opacity: 0.9; }
+    .stats { display: flex; justify-content: space-around; padding: 24px 16px; background: white; margin: -16px 16px 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 600; color: #667eea; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #999; }
+    .menu-list { padding: 0 16px; }
+    .menu-group { background: white; border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+    .menu-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+    .menu-item:last-child { border-bottom: none; }
+    .status-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin: 16px; text-align: center; }
+    .status-text { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+    .status-time { font-size: 14px; opacity: 0.9; }
+    .info-section { background: white; border-radius: 12px; padding: 16px; margin: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .info-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+    .info-item:last-child { border-bottom: none; }
+    .label { color: #999; font-size: 14px; }
+    .value { color: #333; font-size: 14px; }
+    .reward-display { font-size: 32px; font-weight: 600; color: #ff6b6b; text-align: center; padding: 16px; }
+    .action-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 12px; padding: 12px 16px; background: white; box-shadow: 0 -2px 8px rgba(0,0,0,0.05); }
+    .action-bar .btn { flex: 1; padding: 12px; border: none; border-radius: 20px; font-size: 16px; cursor: pointer; }
+    .btn-default { background: #f5f5f5; color: #333; }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .filters { display: flex; gap: 8px; padding: 12px 16px; background: white; overflow-x: auto; }
+    .filter-tag { padding: 6px 16px; background: #f5f5f5; border-radius: 16px; font-size: 14px; white-space: nowrap; cursor: pointer; }
+    .filter-tag.active { background: #667eea; color: white; }
+    .loading { text-align: center; padding: 40px; color: #999; }
+    .empty { text-align: center; padding: 60px 20px; color: #999; }
+    .empty .icon { font-size: 60px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="https://fastly.jsdelivr.net/npm/vue@3.4.0/dist/vue.global.prod.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/vue-router@4.2.0/dist/vue-router.global.prod.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/vant@4.8.0/lib/vant.min.js"></script>
+  <script>
+    const { createApp, ref, onMounted } = Vue;
+    const { createRouter, createWebHashHistory } = VueRouter;
+    
+    // API 配置
+    const API_BASE = 'https://a35d63f0b69338e3-8-152-234-182.serveousercontent.com/api';
+    
+    // 当前用户（模拟登录，实际应使用微信登录）
+    let currentUser = { id: 1, nickname: '用户 A62C', phone: '138****1234' };
+    
+    // API 调用
+    const api = {
+      async getOrders() {
+        const res = await fetch(`${API_BASE}/orders`);
+        return res.json();
+      },
+      async getOrder(id) {
+        const res = await fetch(`${API_BASE}/orders/${id}`);
+        return res.json();
+      },
+      async createOrder(data) {
+        const res = await fetch(`${API_BASE}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...data, publisherId: currentUser.id })
+        });
+        return res.json();
+      },
+      async acceptOrder(id, acceptorId) {
+        const res = await fetch(`${API_BASE}/orders/${id}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ acceptorId })
+        });
+        return res.json();
+      },
+      async completeOrder(id) {
+        const res = await fetch(`${API_BASE}/orders/${id}/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating: 5, comment: '很好！' })
+        });
+        return res.json();
+      },
+      async getUser(id) {
+        const res = await fetch(`${API_BASE}/users/${id}`);
+        return res.json();
+      },
+      async createUser(data) {
+        const res = await fetch(`${API_BASE}/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        return res.json();
+      }
+    };
+
+    const Home = {
+      template: `
+        <div class="page">
+          <div class="header"><div class="location"><van-icon name="location-o"/><span>阳光花园小区</span><van-icon name="arrow"/></div><van-icon name="bell"/></div>
+          <div class="quick-actions"><div class="action-card" @click="$router.push('/publish')"><div class="icon">📦</div><div class="text">发单</div><div class="sub">帮我送</div></div><div class="action-card" @click="$router.push('/orders')"><div class="icon">🙋</div><div class="text">接单</div><div class="sub">赚零花</div></div></div>
+          <div class="orders-section"><div class="section-header"><span>附近订单</span><span class="more" @click="$router.push('/orders')">更多 ></span></div>
+            <div v-if="loading" class="loading">加载中...</div>
+            <div v-else-if="orders.length === 0" class="empty"><div class="icon">📭</div><div>暂无订单</div></div>
+            <div class="order-card" v-else v-for="o in orders" :key="o.id" @click="$router.push('/order/'+o.id)">
+              <div class="order-header"><span class="type">{{o.type==='deliver'?'📦 帮送':'📥 帮取'}}</span><span class="time">{{formatTime(o.createdAt)}}</span></div>
+              <div class="order-route">{{o.pickupAddress}} → {{o.deliveryAddress}}</div>
+              <div class="order-footer"><span class="reward">¥{{o.reward}}</span><span class="distance">{{o.id}}</span></div>
+            </div>
+          </div>
+          <van-tabbar v-model="active"><van-tabbar-item icon="home-o" @click="$router.push('/')">首页</van-tabbar-item><van-tabbar-item icon="add" @click="$router.push('/publish')">发单</van-tabbar-item><van-tabbar-item icon="orders-o" @click="$router.push('/orders')">接单</van-tabbar-item><van-tabbar-item icon="user-o" @click="$router.push('/profile')">我的</van-tabbar-item></van-tabbar>
+        </div>`,
+      setup() {
+        const active = ref('home');
+        const orders = ref([]);
+        const loading = ref(true);
+        
+        const formatTime = (date) => {
+          const d = new Date(date);
+          const now = new Date();
+          const diff = (now - d) / 1000;
+          if (diff < 60) return '刚刚';
+          if (diff < 3600) return `${Math.floor(diff/60)}分钟前`;
+          if (diff < 86400) return `${Math.floor(diff/3600)}小时前`;
+          return `${d.getMonth()+1}月${d.getDate()}日`;
+        };
+        
+        onMounted(async () => {
+          try {
+            const data = await api.getOrders();
+            orders.value = data;
+          } catch (e) { console.error(e); }
+          loading.value = false;
+        });
+        
+        return { active, orders, loading, formatTime };
+      }
+    };
+
+    const Publish = {
+      template: `
+        <div class="page"><div class="page-header"><van-icon name="arrow-left" @click="$router.back()"/><span>发布配送需求</span></div>
+        <div class="form"><div class="form-section"><div class="section-title">订单类型</div><div class="type-selector"><div class="type-option" :class="{active:type==='deliver'}" @click="type='deliver'"><span class="icon">📦</span><span>帮我送</span></div><div class="type-option" :class="{active:type==='pickup'}" @click="type='pickup'"><span class="icon">📥</span><span>帮我取</span></div></div></div>
+        <div class="form-section"><div class="section-title">取件地址</div><van-field v-model="pickupAddress" placeholder="请输入取件地址"/></div>
+        <div class="form-section"><div class="section-title">收件地址</div><van-field v-model="deliveryAddress" placeholder="请输入收件地址"/></div>
+        <div class="form-section"><div class="section-title">物品描述</div><van-field v-model="description" type="textarea" rows="3" placeholder="请描述物品及注意事项"/></div>
+        <div class="form-section"><div class="section-title">期望时间</div><van-radio-group v-model="expectedTime" direction="horizontal"><van-radio name="立即">立即</van-radio><van-radio name="30 分钟内">30 分钟内</van-radio><van-radio name="1 小时内">1 小时内</van-radio></van-radio-group></div>
+        <div class="form-section"><div class="section-title">报酬设置</div><div class="reward-display">¥{{reward}}</div><van-slider v-model="reward" :min="3" :max="50"/></div>
+        <div class="submit-section"><van-button type="primary" block round :loading="submitting" @click="submit">支付 ¥{{reward}} 并发布</van-button></div></div></div>`,
+      setup() {
+        const type = ref('deliver');
+        const pickupAddress = ref('');
+        const deliveryAddress = ref('');
+        const description = ref('');
+        const expectedTime = ref('立即');
+        const reward = ref(8);
+        const submitting = ref(false);
+        
+        const submit = async () => {
+          if (!pickupAddress.value || !deliveryAddress.value) {
+            vant.showToast('请填写取件和收件地址');
+            return;
+          }
+          submitting.value = true;
+          try {
+            await api.createOrder({
+              type: type.value,
+              pickupAddress: pickupAddress.value,
+              deliveryAddress: deliveryAddress.value,
+              description: description.value,
+              expectedTime: expectedTime.value,
+              reward: reward.value
+            });
+            vant.showToast('发布成功！');
+            setTimeout(() => window.location.hash = '/', 1500);
+          } catch (e) {
+            vant.showToast('发布失败：' + e.message);
+          }
+          submitting.value = false;
+        };
+        return { type, pickupAddress, deliveryAddress, description, expectedTime, reward, submitting, submit };
+      }
+    };
+
+    const Orders = {
+      template: `
+        <div class="page"><div class="page-header"><van-icon name="arrow-left" @click="$router.back()"/><span>接单大厅</span></div>
+        <div class="filters"><div class="filter-tag active">全部</div><div class="filter-tag">待接单</div><div class="filter-tag">进行中</div></div>
+        <div class="orders-section">
+          <div v-if="loading" class="loading">加载中...</div>
+          <div v-else-if="orders.length === 0" class="empty"><div class="icon">📭</div><div>暂无订单</div></div>
+          <div class="order-card" v-else v-for="o in orders" :key="o.id" @click="$router.push('/order/'+o.id)">
+            <div class="order-header"><span class="type">{{o.type==='deliver'?'📦 帮送':'📥 帮取'}}</span><span class="time">{{formatTime(o.createdAt)}}</span></div>
+            <div class="order-route"><div><van-icon name="location-o"/> {{o.pickupAddress}}</div><div style="text-align:center;color:#999">↓</div><div><van-icon name="location-o"/> {{o.deliveryAddress}}</div></div>
+            <div class="order-footer"><span class="reward">¥{{o.reward}}</span><span class="distance">{{o.status}}</span></div>
+          </div>
+        </div>
+        <van-tabbar v-model="active"><van-tabbar-item icon="home-o" @click="$router.push('/')">首页</van-tabbar-item><van-tabbar-item icon="add" @click="$router.push('/publish')">发单</van-tabbar-item><van-tabbar-item icon="orders-o" @click="$router.push('/orders')">接单</van-tabbar-item><van-tabbar-item icon="user-o" @click="$router.push('/profile')">我的</van-tabbar-item></van-tabbar></div>`,
+      setup() {
+        const active = ref('orders');
+        const orders = ref([]);
+        const loading = ref(true);
+        const formatTime = (date) => {
+          const d = new Date(date);
+          const now = new Date();
+          const diff = (now - d) / 1000;
+          if (diff < 60) return '刚刚';
+          if (diff < 3600) return `${Math.floor(diff/60)}分钟前`;
+          return `${d.getMonth()+1}月${d.getDate()}日`;
+        };
+        onMounted(async () => {
+          try {
+            const data = await api.getOrders();
+            orders.value = data.filter(o => o.status === 'pending');
+          } catch (e) { console.error(e); }
+          loading.value = false;
+        });
+        return { active, orders, loading, formatTime };
+      }
+    };
+
+    const OrderDetail = {
+      template: `
+        <div class="page"><div class="page-header"><van-icon name="arrow-left" @click="$router.back()"/><span>订单详情</span></div>
+          <div v-if="order">
+            <div class="status-card"><div class="status-text">{{statusMap[order.status]||order.status}}</div><div class="status-time">{{formatTime(order.createdAt)}}发布</div></div>
+            <div class="info-section"><div class="section-title">订单信息</div>
+              <div class="info-item"><span class="label">订单类型</span><span class="value">{{order.type==='deliver'?'帮我送':'帮我取'}}</span></div>
+              <div class="info-item"><span class="label">取件地址</span><span class="value">{{order.pickupAddress}}</span></div>
+              <div class="info-item"><span class="label">收件地址</span><span class="value">{{order.deliveryAddress}}</span></div>
+              <div class="info-item"><span class="label">物品描述</span><span class="value">{{order.description||'-'}}</span></div>
+              <div class="info-item"><span class="label">期望时间</span><span class="value">{{order.expectedTime||'-'}}</span></div>
+            </div>
+            <div class="info-section"><div class="section-title">报酬</div><div class="reward-display">¥{{order.reward}}</div></div>
+            <div class="info-section" v-if="publisher"><div class="section-title">发单人</div><div style="display:flex;align-items:center;gap:12px"><van-image round :src="publisher.avatar||'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'" style="width:50px;height:50px"/><div><div style="font-weight:600">{{publisher.nickname}}</div><div style="color:#ff976a;font-size:12px">信用分：{{publisher.creditScore}}</div></div></div></div>
+            <div class="action-bar" v-if="order.status==='pending' && currentUser.id !== order.publisherId">
+              <button class="btn btn-default" @click="contact">联系</button>
+              <button class="btn btn-primary" @click="accept">接单</button>
+            </div>
+            <div class="action-bar" v-else-if="order.status==='accepted' && currentUser.id === order.acceptorId">
+              <button class="btn btn-primary" @click="complete">完成订单</button>
+            </div>
+          </div>
+          <div v-else class="loading">加载中...</div>
+        </div>`,
+      setup() {
+        const order = ref(null);
+        const publisher = ref(null);
+        const statusMap = { pending:'待接单', accepted:'已接单', picked:'取件中', delivering:'配送中', completed:'已完成', cancelled:'已取消' };
+        const formatTime = (date) => {
+          const d = new Date(date); const now = new Date(); const diff = (now - d) / 1000;
+          if (diff < 60) return '刚刚'; if (diff < 3600) return `${Math.floor(diff/60)}分钟前`; return `${d.getMonth()+1}月${d.getDate()}日`;
+        };
+        const contact = () => vant.showToast('电话：138****1234');
+        const accept = async () => {
+          try { await api.acceptOrder(order.value.id, currentUser.id); vant.showToast('接单成功！'); loadOrder(); }
+          catch (e) { vant.showToast('接单失败'); }
+        };
+        const complete = async () => {
+          try { await api.completeOrder(order.value.id); vant.showToast('订单已完成！'); setTimeout(() => window.location.hash = '/', 1500); }
+          catch (e) { vant.showToast('完成失败'); }
+        };
+        const loadOrder = async () => {
+          const id = window.location.hash.split('/')[2];
+          if (!id) return;
+          try {
+            order.value = await api.getOrder(parseInt(id));
+            if (order.value.publisherId) publisher.value = await api.getUser(order.value.publisherId);
+          } catch (e) { console.error(e); }
+        };
+        onMounted(loadOrder);
+        return { order, publisher, statusMap, formatTime, contact, accept, complete, currentUser };
+      }
+    };
+
+    const Profile = {
+      template: `
+        <div class="page" style="background:#f5f5f5;min-height:100vh"><div class="profile-header"><van-image round src="https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg" class="avatar"/><div class="user-info"><div class="nickname">{{user.nickname||currentUser.nickname}}</div><div class="phone">{{currentUser.phone}}</div></div></div>
+        <div class="stats"><div class="stat-item"><div class="stat-value">{{user.completedOrders||0}}</div><div class="stat-label">完成订单</div></div><div class="stat-item"><div class="stat-value">¥{{user.totalEarnings||0}}</div><div class="stat-label">累计收入</div></div><div class="stat-item"><div class="stat-value">{{user.creditScore||100}}</div><div class="stat-label">信用分</div></div></div>
+        <div class="menu-list"><div class="menu-group"><div class="menu-item"><span>我的订单</span><van-icon name="arrow"/></div><div class="menu-item"><span>我的钱包</span><span style="color:#999;font-size:14px">余额 ¥{{user.balance||0}}</span></div><div class="menu-item"><span>保证金</span><span style="color:#999;font-size:14px">已缴 ¥{{user.deposit||0}}</span></div><div class="menu-item"><span>实名认证</span><van-tag :type="user.isVerified?'success':'default'">{{user.isVerified?'已认证':'未认证'}}</van-tag></div></div><div class="menu-group"><div class="menu-item"><span>客服中心</span><van-icon name="arrow"/></div><div class="menu-item"><span>设置</span><van-icon name="arrow"/></div></div></div>
+        <van-tabbar v-model="active"><van-tabbar-item icon="home-o" @click="$router.push('/')">首页</van-tabbar-item><van-tabbar-item icon="add" @click="$router.push('/publish')">发单</van-tabbar-item><van-tabbar-item icon="orders-o" @click="$router.push('/orders')">接单</van-tabbar-item><van-tabbar-item icon="user-o" @click="$router.push('/profile')">我的</van-tabbar-item></van-tabbar></div>`,
+      setup() {
+        const active = ref('profile');
+        const user = ref({});
+        onMounted(async () => {
+          try { user.value = await api.getUser(currentUser.id); } catch (e) { console.error(e); }
+        });
+        return { active, user, currentUser };
+      }
+    };
+
+    const routes = [
+      {path:'/',component:Home},
+      {path:'/publish',component:Publish},
+      {path:'/orders',component:Orders},
+      {path:'/order/:id',component:OrderDetail},
+      {path:'/profile',component:Profile}
+    ];
+    const router = createRouter({history:createWebHashHistory(),routes});
+    const app = createApp({template:'<router-view/>'});
+    app.use(router);
+    app.use(vant);
+    app.mount('#app');
+  </script>
+</body>
+</html>

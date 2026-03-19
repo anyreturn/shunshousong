@@ -1,0 +1,161 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UsersService } from './users.service';
+import { User } from './user.entity';
+import { ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
+
+describe('UsersService', () => {
+  let service: UsersService;
+  let repository: Repository<User>;
+
+  const mockUser: User = {
+    id: 1,
+    openid: 'test-openid',
+    phone: '13800138000',
+    email: 'test@example.com',
+    password: 'hashed-password',
+    nickname: 'test-user',
+    avatar: '',
+    realName: null,
+    idCard: null,
+    deposit: 0,
+    balance: 0,
+    creditScore: 100,
+    isVerified: false,
+    completedOrders: 0,
+    totalEarnings: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    hashPassword: jest.fn(),
+    validatePassword: jest.fn(),
+  } as any;
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UsersService,
+        {
+          provide: getRepositoryToken(User),
+          useClass: Repository,
+        },
+      ],
+    })
+      .overrideProvider(getRepositoryToken(User))
+      .useValue({
+        findOne: jest.fn(),
+        create: jest.fn(),
+        save: jest.fn(),
+        find: jest.fn(),
+        increment: jest.fn(),
+        update: jest.fn(),
+      })
+      .compile();
+
+    service = module.get<UsersService>(UsersService);
+    repository = module.get<Repository<User>>(getRepositoryToken(User));
+  });
+
+  it('应该定义服务', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('register', () => {
+    it('应该成功注册新用户', async () => {
+      const registerDto = {
+        phone: '13800138000',
+        password: 'password123',
+        nickname: 'test-user',
+        isAgreementAccepted: true,
+      };
+
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+      jest.spyOn(repository, 'create').mockReturnValue(mockUser);
+      jest.spyOn(repository, 'save').mockResolvedValue(mockUser);
+
+      const result = await service.register(registerDto as any);
+      expect(result).toEqual(mockUser);
+    });
+
+    it('手机号已存在时应该抛出 ConflictException', async () => {
+      const registerDto = {
+        phone: '13800138000',
+        password: 'password123',
+        nickname: 'test-user',
+        isAgreementAccepted: true,
+      };
+
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser);
+
+      await expect(service.register(registerDto as any)).rejects.toThrow(ConflictException);
+    });
+
+    it('未同意协议时应该抛出 BadRequestException', async () => {
+      const registerDto = {
+        phone: '13800138000',
+        password: 'password123',
+        nickname: 'test-user',
+        isAgreementAccepted: false,
+      };
+
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.register(registerDto as any)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('login', () => {
+    it('应该成功登录', async () => {
+      const loginDto = {
+        phone: '13800138000',
+        password: 'password123',
+      };
+
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser);
+      mockUser.validatePassword = jest.fn().mockResolvedValue(true);
+
+      const result = await service.login(loginDto as any);
+      expect(result).toHaveProperty('user');
+      expect(result).toHaveProperty('token');
+    });
+
+    it('用户不存在时应该抛出 NotFoundException', async () => {
+      const loginDto = {
+        phone: '13800138000',
+        password: 'password123',
+      };
+
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.login(loginDto as any)).rejects.toThrow(NotFoundException);
+    });
+
+    it('密码错误时应该抛出 BadRequestException', async () => {
+      const loginDto = {
+        phone: '13800138000',
+        password: 'wrong-password',
+      };
+
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser);
+      mockUser.validatePassword = jest.fn().mockResolvedValue(false);
+
+      await expect(service.login(loginDto as any)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('findByPhone', () => {
+    it('应该根据手机号找到用户', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser);
+
+      const result = await service.findByPhone('13800138000');
+      expect(result).toEqual(mockUser);
+    });
+
+    it('手机号不存在时返回 null', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+
+      const result = await service.findByPhone('13800138000');
+      expect(result).toBeNull();
+    });
+  });
+});
