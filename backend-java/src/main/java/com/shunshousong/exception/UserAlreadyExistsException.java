@@ -20,11 +20,11 @@ public class UserAlreadyExistsException extends BusinessException {
     }
     
     /**
-     * 创建用户已存在异常
+     * 创建用户已存在异常（OpenID）
      * 
      * @param openid 微信 OpenID
      */
-    public UserAlreadyExistsExceptionWithOpenid(String openid) {
+    public UserAlreadyExistsException(String openid, boolean isOpenid) {
         super("该 OpenID 已注册：" + openid, "USER_ALREADY_EXISTS");
     }
 }

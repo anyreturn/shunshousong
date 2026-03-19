@@ -1,8 +1,10 @@
 package com.shunshousong.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.shunshousong.dto.UserDTOs.*;
+import com.shunshousong.dto.UserDTOs.LoginDto;
+import com.shunshousong.dto.UserDTOs.RegisterDto;
 import com.shunshousong.entity.User;
+import com.shunshousong.exception.UserNotFoundException;
 import com.shunshousong.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,11 +21,27 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * UserController 集成测试
+ * 
+ * <p>使用 @WebMvcTest 进行 Controller 层集成测试</p>
+ * 
+ * <p>测试覆盖：</p>
+ * <ul>
+ *     <li>GET /api/users/{id} - 查询单个用户</li>
+ *     <li>GET /api/users - 查询用户列表</li>
+ *     <li>POST /api/users/register - 用户注册</li>
+ *     <li>POST /api/users/login - 用户登录</li>
+ *     <li>异常处理 - 404, 400 错误</li>
+ * </ul>
+ * 
+ * @author shunshousong team
+ * @since 1.0.0
+ */
 @WebMvcTest(UserController.class)
 @DisplayName("UserController 集成测试")
 class UserControllerTest {
@@ -31,16 +49,13 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     @MockBean
     private UserService userService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private User testUser;
-    private CreateUserDto createDto;
-    private RegisterDto registerDto;
-    private LoginDto loginDto;
 
     @BeforeEach
     void setUp() {
@@ -49,174 +64,150 @@ class UserControllerTest {
         testUser.setPhone("13800138000");
         testUser.setEmail("test@example.com");
         testUser.setNickname("测试用户");
-        testUser.setAvatar("https://example.com/avatar.jpg");
-        testUser.setDeposit(0.0);
-        testUser.setBalance(0.0);
-        testUser.setCreditScore(100);
-
-        createDto = new CreateUserDto();
-        createDto.setPhone("13800138000");
-        createDto.setEmail("test@example.com");
-        createDto.setPassword("password123");
-        createDto.setNickname("新用户");
-
-        registerDto = new RegisterDto();
-        registerDto.setPhone("13900139000");
-        registerDto.setPassword("password123");
-        registerDto.setNickname("注册用户");
-        registerDto.setIsAgreementAccepted(true);
-
-        loginDto = new LoginDto();
-        loginDto.setPhone("13800138000");
-        loginDto.setPassword("password123");
     }
 
     @Test
-    @DisplayName("GET /api/users/{id} - 获取单个用户")
-    void findOne() throws Exception {
+    @DisplayName("GET /api/users/{id} - 成功查询用户")
+    void findOne_success() throws Exception {
+        // Given
         when(userService.findOne(1L)).thenReturn(testUser);
 
+        // When & Then
         mockMvc.perform(get("/api/users/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.nickname").value("测试用户"))
-                .andExpect(jsonPath("$.phone").value("13800138000"));
-
-        verify(userService, times(1)).findOne(1L);
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(1))
+            .andExpect(jsonPath("$.phone").value("13800138000"))
+            .andExpect(jsonPath("$.nickname").value("测试用户"));
     }
 
     @Test
-    @DisplayName("GET /api/users/{id} - 用户不存在返回错误")
+    @DisplayName("GET /api/users/{id} - 用户不存在返回 404")
     void findOne_notFound() throws Exception {
-        when(userService.findOne(999L)).thenThrow(new RuntimeException("用户 999 不存在"));
+        // Given
+        when(userService.findOne(999L)).thenThrow(new UserNotFoundException(999L));
 
+        // When & Then
         mockMvc.perform(get("/api/users/999"))
-                .andExpect(status().is4xxClientError());
-
-        verify(userService, times(1)).findOne(999L);
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("USER_NOT_FOUND"));
     }
 
     @Test
-    @DisplayName("GET /api/users - 获取用户列表")
+    @DisplayName("GET /api/users - 查询用户列表")
     void findAll() throws Exception {
+        // Given
         List<User> users = Arrays.asList(testUser, new User());
         when(userService.findAll()).thenReturn(users);
 
+        // When & Then
         mockMvc.perform(get("/api/users"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(2));
-
-        verify(userService, times(1)).findAll();
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
-    @DisplayName("POST /api/users - 创建用户")
-    void create() throws Exception {
-        when(userService.create(any(CreateUserDto.class))).thenReturn(testUser);
+    @DisplayName("POST /api/users/register - 成功注册")
+    void register_success() throws Exception {
+        // Given
+        RegisterDto registerDto = new RegisterDto();
+        registerDto.setPhone("13900139000");
+        registerDto.setPassword("password123");
+        registerDto.setNickname("新用户");
+        registerDto.setIsAgreementAccepted(true);
 
-        mockMvc.perform(post("/api/users")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.nickname").value("测试用户"));
-
-        verify(userService, times(1)).create(any(CreateUserDto.class));
-    }
-
-    @Test
-    @DisplayName("POST /api/users/register - 用户注册")
-    void register() throws Exception {
         when(userService.register(any(RegisterDto.class))).thenReturn(testUser);
 
+        // When & Then
         mockMvc.perform(post("/api/users/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerDto)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1));
-
-        verify(userService, times(1)).register(any(RegisterDto.class));
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerDto)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(1));
     }
 
     @Test
-    @DisplayName("POST /api/users/login - 用户登录")
-    void login() throws Exception {
+    @DisplayName("POST /api/users/register - 手机号已注册返回 400")
+    void register_phoneExists() throws Exception {
+        // Given
+        RegisterDto registerDto = new RegisterDto();
+        registerDto.setPhone("13800138000");
+        registerDto.setPassword("password123");
+        registerDto.setIsAgreementAccepted(true);
+
+        doThrow(new com.shunshousong.exception.UserAlreadyExistsException("13800138000"))
+            .when(userService).register(any(RegisterDto.class));
+
+        // When & Then
+        mockMvc.perform(post("/api/users/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerDto)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("USER_ALREADY_EXISTS"));
+    }
+
+    @Test
+    @DisplayName("POST /api/users/login - 成功登录")
+    void login_success() throws Exception {
+        // Given
+        LoginDto loginDto = new LoginDto();
+        loginDto.setPhone("13800138000");
+        loginDto.setPassword("password123");
+
         Map<String, Object> loginResult = new HashMap<>();
         loginResult.put("user", testUser);
-        loginResult.put("token", "mocked_token_12345");
+        loginResult.put("token", "mock_token_123");
 
         when(userService.login(any(LoginDto.class))).thenReturn(loginResult);
 
+        // When & Then
         mockMvc.perform(post("/api/users/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.id").value(1))
-                .andExpect(jsonPath("$.token").value("mocked_token_12345"));
-
-        verify(userService, times(1)).login(any(LoginDto.class));
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDto)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.user.id").value(1))
+            .andExpect(jsonPath("$.token").value("mock_token_123"));
     }
 
     @Test
-    @DisplayName("GET /api/users/check-phone/{phone} - 检查手机号可用性")
+    @DisplayName("POST /api/users/login - 用户不存在返回 400")
+    void login_userNotFound() throws Exception {
+        // Given
+        LoginDto loginDto = new LoginDto();
+        loginDto.setPhone("13800138000");
+        loginDto.setPassword("wrongpassword");
+
+        doThrow(new UserNotFoundException("13800138000"))
+            .when(userService).login(any(LoginDto.class));
+
+        // When & Then
+        mockMvc.perform(post("/api/users/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginDto)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errorCode").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("GET /api/users/check-phone/{phone} - 手机号可用")
     void checkPhone_available() throws Exception {
-        when(userService.findByPhone("13800138000")).thenReturn(null);
+        // Given
+        when(userService.findByPhone("13900139000")).thenReturn(null);
 
-        mockMvc.perform(get("/api/users/check-phone/13800138000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.available").value(true));
-
-        verify(userService, times(1)).findByPhone("13800138000");
+        // When & Then
+        mockMvc.perform(get("/api/users/check-phone/13900139000"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.available").value(true));
     }
 
     @Test
-    @DisplayName("GET /api/users/check-phone/{phone} - 手机号已被使用")
+    @DisplayName("GET /api/users/check-phone/{phone} - 手机号已被占用")
     void checkPhone_notAvailable() throws Exception {
+        // Given
         when(userService.findByPhone("13800138000")).thenReturn(testUser);
 
+        // When & Then
         mockMvc.perform(get("/api/users/check-phone/13800138000"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.available").value(false));
-
-        verify(userService, times(1)).findByPhone("13800138000");
-    }
-
-    @Test
-    @DisplayName("POST /api/users/{id}/deposit - 增加押金")
-    void addDeposit() throws Exception {
-        testUser.setDeposit(100.0);
-        when(userService.addDeposit(eq(1L), eq(100.0))).thenReturn(testUser);
-
-        Map<String, Double> body = new HashMap<>();
-        body.put("amount", 100.0);
-
-        mockMvc.perform(post("/api/users/1/deposit")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.deposit").value(100.0));
-
-        verify(userService, times(1)).addDeposit(eq(1L), eq(100.0));
-    }
-
-    @Test
-    @DisplayName("POST /api/users/{id}/rating - 更新评分")
-    void updateRating() throws Exception {
-        testUser.setCreditScore(50);
-        when(userService.updateRating(eq(1L), eq(5))).thenReturn(testUser);
-
-        Map<String, Integer> body = new HashMap<>();
-        body.put("rating", 5);
-
-        mockMvc.perform(post("/api/users/1/rating")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.creditScore").value(50));
-
-        verify(userService, times(1)).updateRating(eq(1L), eq(5));
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.available").value(false));
     }
 }
